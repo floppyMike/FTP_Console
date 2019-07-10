@@ -24,15 +24,6 @@ void handleList(Connection& con, char* fileName)
 
 void handleFile(Connection& con, const std::string& fileName)
 {
-	static auto writeFile = [&con](std::ifstream& file, const std::string& name)
-	{
-		auto content = ctl::getInputStreamContent(file);
-		auto size = std::to_string(content.size());
-
-		con.write(name + ';' + size + ';' + std::move(content));
-		verboseLog(name + " with " + std::move(size) + " sent.");
-	};
-
 	std::ifstream file(fileName, std::ios::binary | std::ios::in);
 	std::string content;
 
@@ -40,7 +31,7 @@ void handleFile(Connection& con, const std::string& fileName)
 	if (file)
 	{
 		verboseLog("Single file copy procedure started.");
-		writeFile(file, fileName);
+		content = fileName + ';' + ctl::getInputStreamContent(file);
 	}
 
 	//If input is a directory
@@ -53,8 +44,15 @@ void handleFile(Connection& con, const std::string& fileName)
 			std::ifstream fileIter(i, std::ios::binary | std::ios::in);
 
 			if (fileIter)
+			{
+				//Get name
+				const auto name = i.path().string();
+
 				//Write to client
-				writeFile(fileIter, i.path().string());
+				verboseLog("Sending " + name);
+				con.write(name + ';' + ctl::getInputStreamContent(fileIter));
+				verboseLog(name + " sent.");
+			}
 		}
 
 		return;
