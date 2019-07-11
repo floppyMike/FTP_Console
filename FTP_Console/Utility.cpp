@@ -17,7 +17,7 @@ void handleList(Connection& con)
 	verboseLog("File list received.");
 
 	//Print the answer
-	std::cout << data << '\n';
+	std::cout << data;
 }
 
 void handleFile(Connection& con, char* fileName)

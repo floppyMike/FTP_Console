@@ -18,7 +18,7 @@ void Connection::write(const std::string_view& str)
 	//Write to connection
 	std::error_code err;
 	m_socket->wait(tcp::socket::wait_write);
-	asio::write(*m_socket, asio::buffer(std::string(str) + "\r\n\r\n"), err);
+	asio::write(*m_socket, asio::buffer(std::string(str) + "\n\r\n\r"), err);
 
 	//If error occured
 	if (err)
@@ -27,38 +27,20 @@ void Connection::write(const std::string_view& str)
 
 std::string Connection::read()
 {
-	std::string stream;
+	asio::streambuf buffer;
 
-	while (true)
-	{
-		std::array<char, 128> buffer;
+	//Fill buffer with message
+	std::error_code err;
+	auto len = asio::read_until(*m_socket, buffer, "\n\r\n\r", err);
 
-		//Fill buffer with message
-		std::error_code err;
-		auto len = m_socket->read_some(asio::buffer(buffer), err);
+	//If connection broke
+	if (err == asio::error::eof)
+		return "EOF"s;
 
-		//Append it to the stream
-		stream.append(buffer.data(), len);
+	//If error occured
+	else if (err)
+		throw ctl::Log(err.message());
 
-		//If connection broke
-		if (err == asio::error::eof)
-		{
-			stream = "EOF";
-			break;
-		}
-
-		//If error occured
-		else if (err)
-			throw ctl::Log(err.message());
-
-		//If seperator is reached
-		else if (std::equal(stream.end() - 4, stream.end(), "\r\n\r\n"))
-		{
-			//Erase seperator
-			stream.erase(stream.end() - 4, stream.end());
-			break;
-		}
-	}
-
-	return stream;
+	//Create string message minus the delimiter
+	return std::string(asio::buffers_begin(buffer.data()), asio::buffers_begin(buffer.data()) + len - 4);
 }
